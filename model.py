@@ -6,19 +6,45 @@ import numpy as np
 import torch
 
 
-def iou(pred, target):
-    scores = np.full(3, float('nan'))
-    # ignore index 0 (background)
-    for idx, cls in enumerate(target.unique()[1:]):
-        y_pred = pred[:, cls, :, :]
+def iou(pred, target): 
+    metrics = {}
+    #LEISHMANIA
+    y_pred = pred[:, 1, :, :]
+    y_true = target == 1
 
-        y_true = target == cls
+    metrics['leishmania'] = torchmetrics.functional.iou(y_pred, y_true)
 
-        scores[idx] = torchmetrics.functional.iou(y_pred, y_true)
+    #macrofago_contavel
+    y_pred = pred[:, 2, :, :]
+    y_true = target == 2
 
-    metrics = {'leish': scores[0], 'macrofago contavel': scores[1],
-               'macrofago nao contavel': scores[2], 'mIoU': scores.mean()}
+    metrics['macrofago_contavel'] = torchmetrics.functional.iou(y_pred, y_true)
+
+    #macrofago_nao_contavel
+    y_pred = pred[:, 3, :, :]
+    y_true = target == 3
+
+    metrics['macrofago_nao_contavel'] = torchmetrics.functional.iou(y_pred, y_true)
+
+    #total_preds
+    y_pred = pred.argmax(dim=1)
+    y_true = target
+    metrics['segmentation'] = torchmetrics.functional.iou(y_pred, y_true)
+
     return metrics
+
+    # scores = np.full(3, float('nan'))
+    # # ignore index 0 (background)
+    # for idx, cls in enumerate(np.arange(1, 4)):
+    #     y_pred = pred[:, cls, :, :]
+
+    #     y_true = target == cls
+
+    #     scores[idx] = torchmetrics.functional.iou(y_pred, y_true)
+
+    # metrics = {'leish': scores[0], 'macrofago contavel': scores[1],
+    #            'macrofago nao contavel': scores[2], 'mIoU': scores.mean()}
+    # return metrics
 
 
 class SemanticModel(pl.LightningModule):
@@ -78,6 +104,10 @@ class SemanticModel(pl.LightningModule):
         }
 
         self.log_dict(metrics, prog_bar=False)
+
+    def inference(img):
+        #NotImplementedError()
+        pass
 
     def training_step(self, batch, batch_idx):
         return self.shared_step(batch, "train")

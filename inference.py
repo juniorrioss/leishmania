@@ -15,16 +15,13 @@ from skimage import (
 IMAGE_PATH = 'teste'
 
 
-def inference(model, image_path: str):
+def inference(model, image: np.ndarray):
 
     MEAN = [0.485, 0.456, 0.406]
     STD = [0.229, 0.224, 0.225]
 
-    img = cv2.imread(IMAGE_PATH)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img = cv2.resize(img, (768, 768))
     t = T.Compose([T.ToTensor(), T.Normalize(MEAN, STD)])
-    img = t(img)
+    img = t(image)
 
     img_input = img.unsqueeze(0)
 
@@ -42,10 +39,12 @@ def inference(model, image_path: str):
 
     leishmania_preds = torch.sigmoid(upsampled_logits[0][1])
     contavel_preds = torch.sigmoid(upsampled_logits[0][2])
+    nao_contavel_preds = torch.sigmoid(upsampled_logits[0][3])
     seg = upsampled_logits.argmax(dim=1)[0]
 
     return {
         'leishmania': leishmania_preds,
+        'macrofago nao contavel': nao_contavel_preds,
         'macrofago contavel': contavel_preds,
         'segmentation': seg
     }
