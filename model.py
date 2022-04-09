@@ -2,49 +2,8 @@ import pytorch_lightning as pl
 import torchmetrics
 from torch import nn
 from transformers import SegformerForSemanticSegmentation
-import numpy as np
 import torch
 
-
-def iou(pred, target): 
-    metrics = {}
-    #LEISHMANIA
-    y_pred = pred[:, 1, :, :]
-    y_true = target == 1
-
-    metrics['leishmania'] = torchmetrics.functional.iou(y_pred, y_true)
-
-    #macrofago_contavel
-    y_pred = pred[:, 2, :, :]
-    y_true = target == 2
-
-    metrics['macrofago_contavel'] = torchmetrics.functional.iou(y_pred, y_true)
-
-    #macrofago_nao_contavel
-    y_pred = pred[:, 3, :, :]
-    y_true = target == 3
-
-    metrics['macrofago_nao_contavel'] = torchmetrics.functional.iou(y_pred, y_true)
-
-    #total_preds
-    y_pred = pred.argmax(dim=1)
-    y_true = target
-    metrics['segmentation'] = torchmetrics.functional.iou(y_pred, y_true)
-
-    return metrics
-
-    # scores = np.full(3, float('nan'))
-    # # ignore index 0 (background)
-    # for idx, cls in enumerate(np.arange(1, 4)):
-    #     y_pred = pred[:, cls, :, :]
-
-    #     y_true = target == cls
-
-    #     scores[idx] = torchmetrics.functional.iou(y_pred, y_true)
-
-    # metrics = {'leish': scores[0], 'macrofago contavel': scores[1],
-    #            'macrofago nao contavel': scores[2], 'mIoU': scores.mean()}
-    # return metrics
 
 
 class SemanticModel(pl.LightningModule):
@@ -58,56 +17,44 @@ class SemanticModel(pl.LightningModule):
                                                                       num_labels=4, id2label=id2label, label2id=label2id,
                                                                       reshape_last_stage=True)
 
-        self.jaccard_index = iou
-        #self.device = 'cuda'  if torch.cuda.is_available() else 'cpu'
-
     def forward(self, pixel_values, labels):
         logits = self.model(pixel_values, labels)
 
         return logits
 
     def shared_step(self, batch, stage):
-        image = batch["pixel_values"].to(self.device)
-        labels = batch['labels'].to(self.device)
+        image = batch["pixel_values"].to(self.device) # image to device
+        labels = batch['labels'].to(self.device) # labels to device
 
-        outputs = self(pixel_values=image, labels=labels)
+        outputs = self(pixel_values=image, labels=labels) #model predict
 
-        #loss = self.loss_fn(logits_mask, mask)
+        #loss = self.loss_fn(logits_mask, mask) # custom loss
         loss = outputs.loss  # CROSS ENTROPY LOSS
 
-        #pred_mask = torch.nn.functional.softmax(logits_mask, dim=1)
+        # segformer does the predict in shape/8, so it's necessary to upsample to label shape
         upsampled_logits = nn.functional.interpolate(
             outputs.logits, size=labels.shape[-2:], mode="bilinear", align_corners=False)
-        pred_mask = torch.argmax(upsampled_logits, dim=1)
 
-        #iou_score = self.jaccard_index(upsampled_logits, labels.long())
 
-        #iou_score = torchmetrics.functional.iou(pred_mask, labels.long())
-        metrics = self.jaccard_index(upsampled_logits, labels.long())
+        pred_mask = torch.argmax(upsampled_logits, dim=1) # argmax in N_class dimension 
+
+        iou_score = torchmetrics.functional.iou(pred_mask, labels.long()) # iou metric in all predictions
+
+        metrics = {'mIoU': iou_score}
         metrics.update({'loss': loss})
         return metrics
 
     def shared_epoch_end(self, output_list, stage):
+        # gathering all metrics for batches and get the Average
         loss = torch.tensor([x['loss'] for x in output_list]).mean().item()
-        leishmania_iou = torch.tensor([x['leish']
-                                      for x in output_list]).mean().item()
-        contavel_iou = torch.tensor(
-            [x['macrofago contavel'] for x in output_list]).mean().item()
-        nao_contavel_iou = torch.tensor(
-            [x['macrofago nao contavel'] for x in output_list]).mean().item()
+        miou_score = torch.tensor([x['mIoU'] for x in output_list]).mean().item()
 
         metrics = {
             stage+'_loss': loss,
-            stage+'_leishmania_iou': leishmania_iou,
-            stage+'_contavel_iou': contavel_iou,
-            stage+'_nao_contavel_iou': nao_contavel_iou,
+            stage+'_mIoU': miou_score,
         }
 
         self.log_dict(metrics, prog_bar=False)
-
-    def inference(img):
-        #NotImplementedError()
-        pass
 
     def training_step(self, batch, batch_idx):
         return self.shared_step(batch, "train")
@@ -129,3 +76,35 @@ class SemanticModel(pl.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.AdamW(self.model.parameters(), lr=0.00006)
+
+
+
+# test with iou for each class
+
+# def iou(pred, target):
+#     metrics = {}
+#     # LEISHMANIA
+#     y_pred = pred[:, 1, :, :]
+#     y_true = target == 1
+
+#     metrics['leishmania'] = torchmetrics.functional.iou(y_pred, y_true)
+
+#     # macrofago_contavel
+#     y_pred = pred[:, 2, :, :]
+#     y_true = target == 2
+
+#     metrics['macrofago_contavel'] = torchmetrics.functional.iou(y_pred, y_true)
+
+#     # macrofago_nao_contavel
+#     y_pred = pred[:, 3, :, :]
+#     y_true = target == 3
+
+#     metrics['macrofago_nao_contavel'] = torchmetrics.functional.iou(
+#         y_pred, y_true)
+
+#     # total_preds
+#     y_pred = pred.argmax(dim=1)
+#     y_true = target
+#     metrics['segmentation'] = torchmetrics.functional.iou(y_pred, y_true)
+
+#     return metrics

@@ -1,6 +1,5 @@
 from torchvision import transforms as T
 import cv2
-from model import SemanticModel
 from torch import nn
 import torch
 import matplotlib.pyplot as plt
@@ -10,9 +9,6 @@ from scipy import ndimage as ndi
 from skimage import (
     color, feature, measure, segmentation
 )
-
-
-IMAGE_PATH = 'teste'
 
 
 def inference(model, image: np.ndarray):
@@ -50,7 +46,7 @@ def inference(model, image: np.ndarray):
     }
 
 
-def leish_count(cells, pred_contavel=None):
+def leish_count(cells, pred_contavel=None, verbose=False):
     if pred_contavel is not None:
         contours, hierarchy = cv2.findContours(image=pred_contavel.astype(
             np.uint8), mode=cv2.RETR_EXTERNAL, method=cv2.CHAIN_APPROX_SIMPLE)
@@ -74,24 +70,8 @@ def leish_count(cells, pred_contavel=None):
         plt.imshow(pred_contavel, alpha=.2, cmap='inferno')
     plt.title(f'Segmented leishmanias countable {n_leish}')
     plt.axis('off')
-    plt.show()
+
+    if verbose:
+        plt.show()
 
     return n_leish
-
-
-if __name__ == '__main__':
-    IMAGE_PATH = 'croped_dataset/0.png'
-    THRESHOLD_LEISHMANIA = 0.3
-    THRESHOLD_MACROFAGO_CONTAVEL = 0.4
-    model = SemanticModel().load_from_checkpoint(
-        'lightning_logs/version_0/checkpoints/epoch=18-step=3096.ckpt')
-
-    outputs = inference(model=model, image_path=IMAGE_PATH)
-
-    preds_leish = (outputs['leishmania'] > THRESHOLD_LEISHMANIA).numpy()
-    preds_contavel = (outputs['macrofago contavel'] >
-                      THRESHOLD_MACROFAGO_CONTAVEL).numpy()
-
-    contagem = leish_count(preds_leish, preds_contavel)
-
-    print('Contagem de leishmanias PREDITAS->', contagem)
