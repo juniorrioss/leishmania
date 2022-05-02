@@ -172,18 +172,15 @@ def remove_bg(image):
     image_gray = rgb2gray(image)
     contours = find_contours(image_gray)
 
-    bounding_boxes = []
-
     for contour in contours:
         contour = contour.astype(int)
-        Xmin = np.min(contour[:, 0])
-        Xmax = np.max(contour[:, 0])
-        Ymin = np.min(contour[:, 1])
-        Ymax = np.max(contour[:, 1])
-
-        # FILTRO PASSA ALTA DE BBOX (RETIRAR RUÍDOS COM COMPRIMENTO MENOR DO QUE 20 PX)
+        Xmin = np.min(contour[:, 1])
+        Xmax = np.max(contour[:, 1])
+        Ymin = np.min(contour[:, 0])
+        Ymax = np.max(contour[:, 0])
+        
         if Xmax - Xmin > 500 and Ymax - Ymin > 500:
-            roi_img = image[Xmin:Xmax, Ymin: Ymax]
+            roi_img = image[Ymin:Ymax, Xmin: Xmax]
 
     return roi_img
 
