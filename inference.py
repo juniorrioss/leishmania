@@ -12,6 +12,7 @@ from skimage.measure import find_contours
 import torch
 from torchvision import transforms as T
 from torch import nn
+from skimage.color import rgb2gray
 
 
 def inference(model, image: np.ndarray, device='cpu'):
@@ -26,13 +27,7 @@ def inference(model, image: np.ndarray, device='cpu'):
         Dict[torch.Tensor]: Outputs prediction with segmentation of: Contable, Non Contables, Leishmania and Argmax Segmentation
     """
 
-    MEAN = [0.485, 0.456, 0.406]
-    STD = [0.229, 0.224, 0.225]
-
-    t = T.Compose([T.ToTensor(), T.Normalize(MEAN, STD)])
-    img = t(image).to(device)
-
-    img_input = img.unsqueeze(0)
+    img_input = preprocessing_image(image).to(device)
 
     model = model.to(device)  # make sure the model is at the correct device
     output = model.model(img_input)
@@ -40,7 +35,7 @@ def inference(model, image: np.ndarray, device='cpu'):
 
     upsampled_logits = nn.functional.interpolate(
         logits,
-        size=img.shape[-2:],  # (height, width)
+        size=img_input.shape[-2:],  # (height, width)
         mode='bilinear',
         align_corners=False
     )
@@ -96,10 +91,10 @@ def generate_contable_roi(contable_segmentation):
     bounding_boxes = []
     for contour in contours:
         contour = contour.astype(int)
-        Xmin = np.min(contour[:, 0])
-        Xmax = np.max(contour[:, 0])
-        Ymin = np.min(contour[:, 1])
-        Ymax = np.max(contour[:, 1])
+        Xmin = np.min(contour[:, 1])
+        Xmax = np.max(contour[:, 1])
+        Ymin = np.min(contour[:, 0])
+        Ymax = np.max(contour[:, 0])
 
         # FILTRO PASSA ALTA DE BBOX (RETIRAR RUÍDOS COM COMPRIMENTO MENOR DO QUE 20 PX)
         if Xmax - Xmin > 20 and Ymax - Ymin > 20:
@@ -135,7 +130,7 @@ def leish_count_by_roi(leish_roi):
     return n_leish
 
 
-def leish_count_per_image(contable_segmentation, leish_segmentation):
+def leish_dict_per_image(contable_segmentation, leish_segmentation):
     """Wrapper function to run the counting process throught a entire image
 
     Args:
@@ -156,11 +151,88 @@ def leish_count_per_image(contable_segmentation, leish_segmentation):
 
     contable_dict = {}
     for bbox in bboxes:
-        leish_roi = leish_segmentation[bbox['Xmin']:bbox['Xmax'], bbox['Ymin']: bbox['Ymax']]
+        leish_roi = leish_segmentation[
+            bbox['Ymin']:bbox['Ymax'], bbox['Xmin']: bbox['Xmax']]
         n_leish = leish_count_by_roi(leish_roi)
-        contable_dict[(bbox['Ymin'], bbox['Xmin'])] = n_leish
+        contable_dict[(bbox['Xmin'], bbox['Ymin'])] = n_leish
 
     return contable_dict
+
+
+def remove_bg(image):
+    """Recebe a imagem colorida e retira o fundo preto por meio de uma bbox
+       E retorna o ROI da imagem 
+
+    Args:
+        imagem_colorida ([img]): [raw image]
+
+    Returns:
+        [np.array img]: roi_img
+    """
+    image_gray = rgb2gray(image)
+    contours = find_contours(image_gray)
+
+    bounding_boxes = []
+
+    for contour in contours:
+        contour = contour.astype(int)
+        Xmin = np.min(contour[:, 0])
+        Xmax = np.max(contour[:, 0])
+        Ymin = np.min(contour[:, 1])
+        Ymax = np.max(contour[:, 1])
+
+        # FILTRO PASSA ALTA DE BBOX (RETIRAR RUÍDOS COM COMPRIMENTO MENOR DO QUE 20 PX)
+        if Xmax - Xmin > 500 and Ymax - Ymin > 500:
+            roi_img = image[Xmin:Xmax, Ymin: Ymax]
+
+    return roi_img
+
+    # img = cv2.medianBlur(image, 5)
+
+    # # threshold
+    # _, th1 = cv2.threshold(img, 60, 255, cv2.THRESH_BINARY)
+    # mask_filtrada = cv2.medianBlur(th1, 43)
+    # img_masked = cv2.bitwise_and(img, img, mask=mask_filtrada)
+
+    # # FIND CONTOURS
+    # cnts = cv2.findContours(
+    #     img_masked, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # cnts = cnts[0] if len(cnts) == 2 else cnts[1]
+
+    # for c in cnts:
+    #     area = cv2.contourArea(c)
+    #     if area > 500:
+    #         x, y, w, h = cv2.boundingRect(c)
+    #         roi_img = image[y:y+h, x:x+w]
+
+    # return roi_img
+
+
+def preprocessing_image(image, remove_background=True):
+    """Function to do all preprocessing steps to do inference
+
+    Args:
+        image (np.array): Image Matrix
+        remove_background (bool, optional): Remove the background throught remove_bg function. Defaults to True.
+
+    Returns:
+        np.array image: Roi image with the minimal background
+    """
+
+    if remove_background:
+        image = remove_bg(image)
+
+    image = cv2.resize(image, (768, 768))
+
+    MEAN = [0.485, 0.456, 0.406]
+    STD = [0.229, 0.224, 0.225]
+
+    t = T.Compose([T.ToTensor(), T.Normalize(MEAN, STD)])
+    img = t(image)
+
+    img_input = img.unsqueeze(0)
+
+    return img_input
 
 
 # def leish_count(cells, pred_contavel=None, verbose=False):
