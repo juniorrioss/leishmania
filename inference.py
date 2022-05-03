@@ -159,15 +159,16 @@ def leish_dict_per_image(contable_segmentation, leish_segmentation):
     return contable_dict
 
 
-def remove_bg(image):
-    """Recebe a imagem colorida e retira o fundo preto por meio de uma bbox
-       E retorna o ROI da imagem 
+def remove_bg(image, mask=None):
+    """Recebe a imagem colorida e a mascara gerada da imagem e retira o fundo preto nas duas imagens
+       E retorna o ROI da imagem e da mascara
 
     Args:
         imagem_colorida ([img]): [raw image]
+        mask ([img]): [mask from raw image]
 
     Returns:
-        [np.array img]: roi_img
+        np.array OR [list[np.array]]: roi_img OR [roi_img, roi_mask]
     """
     image_gray = rgb2gray(image)
     contours = find_contours(image_gray)
@@ -178,31 +179,16 @@ def remove_bg(image):
         Xmax = np.max(contour[:, 1])
         Ymin = np.min(contour[:, 0])
         Ymax = np.max(contour[:, 0])
-        
+
         if Xmax - Xmin > 500 and Ymax - Ymin > 500:
             roi_img = image[Ymin:Ymax, Xmin: Xmax]
+            if mask:
+                roi_mask = mask[Ymin:Ymax, Xmin:Xmax]
 
-    return roi_img
-
-    # img = cv2.medianBlur(image, 5)
-
-    # # threshold
-    # _, th1 = cv2.threshold(img, 60, 255, cv2.THRESH_BINARY)
-    # mask_filtrada = cv2.medianBlur(th1, 43)
-    # img_masked = cv2.bitwise_and(img, img, mask=mask_filtrada)
-
-    # # FIND CONTOURS
-    # cnts = cv2.findContours(
-    #     img_masked, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    # cnts = cnts[0] if len(cnts) == 2 else cnts[1]
-
-    # for c in cnts:
-    #     area = cv2.contourArea(c)
-    #     if area > 500:
-    #         x, y, w, h = cv2.boundingRect(c)
-    #         roi_img = image[y:y+h, x:x+w]
-
-    # return roi_img
+    if mask:
+        return roi_img, roi_mask
+    else:
+        return roi_img
 
 
 def preprocessing_image(image, remove_background=True):
