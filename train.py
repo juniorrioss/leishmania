@@ -5,22 +5,31 @@ from pytorch_lightning.loggers import TensorBoardLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 import albumentations as A
 import cv2
-
+import time
+from config import Config
 
 if __name__ == '__main__':
+    cfg = Config()
 
-    N_EPOCHS = 1
-    BATCH_SIZE = 1
+    N_EPOCHS = cfg.epochs
+    BATCH_SIZE = cfg.batch_size
     IMAGE_PATH = 'croped_dataset'
     MASK_PATH = 'mask'
 
-    t_train = A.Compose([A.Resize(768, 768, interpolation=cv2.INTER_NEAREST), A.HorizontalFlip(), A.VerticalFlip(),
-                        A.GridDistortion(p=0.2), A.RandomBrightnessContrast(
-                            (0, 0.5), (0, 0.5)),
-                        A.GaussNoise()])
+    # t_train = A.Compose([A.Resize(cfg.img_size, interpolation=cv2.INTER_NEAREST), A.HorizontalFlip(), A.VerticalFlip(),
+    #                     A.GridDistortion(p=0.2), A.RandomBrightnessContrast(
+    #                         (0, 0.5), (0, 0.5)),
+    #                     A.GaussNoise()])
 
-    t_val = A.Compose([A.Resize(768, 768, interpolation=cv2.INTER_NEAREST), A.HorizontalFlip(),
-                       A.GridDistortion(p=0.2)])
+    t_train = A.Compose([A.Resize(cfg.image_height, cfg.image_width, interpolation=cv2.INTER_NEAREST),
+                         A.ShiftScaleRotate(
+                             shift_limit=0.2, scale_limit=0.2, rotate_limit=30, p=0.5),
+                         A.RGBShift(r_shift_limit=25, g_shift_limit=25,
+                                    b_shift_limit=25, p=0.5),
+                         A.RandomBrightnessContrast(brightness_limit=0.3, contrast_limit=0.3, p=0.5), ])
+
+    t_val = A.Compose(
+        [A.Resize(cfg.image_height, cfg.image_width, interpolation=cv2.INTER_NEAREST)])
 
     print('LOADING THE DATA')
     datamodule = LeishmaniaDataModule(
@@ -39,7 +48,8 @@ if __name__ == '__main__':
         mode='min'
     )
 
-    logger = TensorBoardLogger('lightning_logs', name='segformer-b0')
+    logger = TensorBoardLogger(
+        'lightning_logs', name=cfg.arch+'_'+cfg.backbone)
 
     trainer = pl.Trainer(
         logger=logger,
@@ -52,4 +62,9 @@ if __name__ == '__main__':
     print('DOWNLOAD THE MODEL')
     model = SemanticModel()
 
+    start = time.time()
+    print('INICIO DO TREINAMENTO')
     trainer.fit(model, datamodule)
+    end = time.time()
+    print('\n\nFIM DO TREINAMENTO')
+    print(end - start)
