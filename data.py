@@ -5,7 +5,9 @@ import torch
 import pytorch_lightning as pl
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
+from config import Config
 
+cfg = Config()
 
 class Leishdata:
     def __init__(self, img_dir, mask_dir, image_list, mean, std, transform=None):
@@ -76,7 +78,7 @@ class LeishmaniaDataModule(pl.LightningDataModule):
         print("Number of validation examples:", len(self.test_dataset))
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, self.batch_size, shuffle=True, num_workers=2)
+        return DataLoader(self.train_dataset, self.batch_size, shuffle=True, num_workers=cfg.data_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.test_dataset, self.batch_size, shuffle=False, num_workers=2)
+        return DataLoader(self.test_dataset, self.batch_size, shuffle=False, num_workers=cfg.data_workers)
