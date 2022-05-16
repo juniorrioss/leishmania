@@ -9,6 +9,7 @@ from config import Config
 
 cfg = Config()
 
+
 class Leishdata:
     def __init__(self, img_dir, mask_dir, image_list, mean, std, transform=None):
         self.img_dir = img_dir
@@ -78,7 +79,7 @@ class LeishmaniaDataModule(pl.LightningDataModule):
         print("Number of validation examples:", len(self.test_dataset))
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, self.batch_size, shuffle=True, num_workers=cfg.data_workers)
+        return DataLoader(self.train_dataset, self.batch_size, shuffle=True, num_workers=cfg.data_workers,  drop_last=True)
 
     def val_dataloader(self):
-        return DataLoader(self.test_dataset, self.batch_size, shuffle=False, num_workers=cfg.data_workers)
+        return DataLoader(self.test_dataset, self.batch_size, shuffle=False, num_workers=cfg.data_workers,  drop_last=True)

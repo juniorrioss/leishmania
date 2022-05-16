@@ -73,15 +73,16 @@ def create_mask(shape, shape_dicts, mode):
 
 
 # DOWNLOAD THE LEISHMANIA DATA
-url = 'https://drive.google.com/uc?id=10Z08dl7irHLGv004fP_Yv4IQEUHqp0Hz'
+# url = 'https://drive.google.com/uc?id=10Z08dl7irHLGv004fP_Yv4IQEUHqp0Hz' v1
+url = 'https://drive.google.com/file/d/1_XayeJBsPOJKzNM-wYnmQuhKe3Tfu2m4/view?usp=sharing'  # v2
 gdown.download(url)
-with zipfile.ZipFile('croped_dataset.zip', 'r') as zip_ref:
+with zipfile.ZipFile('croped_dataset_v2.zip', 'r') as zip_ref:
     zip_ref.extractall('./')
 
 
 mode = 'multiclass'
-save_dir = 'mask'
-json_path = 'croped_dataset'
+save_dir = 'mask_v2'
+json_path = 'croped_dataset_v2'
 
 print('-'*15)
 print('Converting json to mask')
@@ -101,4 +102,4 @@ for json_name in json_list:
 print('-'*15)
 print('Conversion Ended')
 
-os.remove("croped_dataset.zip")
+os.remove("croped_dataset_v2.zip")

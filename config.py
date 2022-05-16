@@ -7,16 +7,17 @@ class Config:
 
         self.epochs = 20
         self.interval_metrics = 100
-        self.data_workers = 16
+        self.data_workers = 2
         self.batch_size = 2
         self.test_size = 0.2
         self.image_height = 512
         self.image_width = 512
+        self.lr = 0.00006
 
         # 'segformer', 'unet', 'unetplusplus', 'manet', 'linknet', 'fpn', 'pspnet', 'deeplabv3', 'deeplabv3plus', 'pan'
-        self.arch = 'deeplabv3plus'
+        self.arch = 'segformer'
         # b0-b5 or encoder type e.g resnet101# https://smp.readthedocs.io/en/latest/encoders_timm.html
-        self.backbone = 'resnext50_32x4d'
+        self.backbone = 'b1'
 
         self.id2label = {0: 'fundo', 1: 'leishmania',
                          2: 'macrofago contavel', 3: 'macrofago nao contavel'}
