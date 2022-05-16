@@ -74,7 +74,7 @@ def create_mask(shape, shape_dicts, mode):
 
 # DOWNLOAD THE LEISHMANIA DATA
 # url = 'https://drive.google.com/uc?id=10Z08dl7irHLGv004fP_Yv4IQEUHqp0Hz' v1
-url = 'https://drive.google.com/file/d/1_XayeJBsPOJKzNM-wYnmQuhKe3Tfu2m4/view?usp=sharing'  # v2
+url = 'https://drive.google.com/uc?id=1_XayeJBsPOJKzNM-wYnmQuhKe3Tfu2m4'  # v2
 gdown.download(url)
 with zipfile.ZipFile('croped_dataset_v2.zip', 'r') as zip_ref:
     zip_ref.extractall('./')
